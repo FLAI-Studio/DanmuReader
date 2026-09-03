@@ -1,32 +1,40 @@
 #include "mainwindow.h"
 
+#include <QCheckBox>
+
+/**
+ * @brief 主窗口构造函数
+ * 初始化 UI、WebSocket 连接和 TTS 引擎
+ */
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), connected(false) {
 
+    // ========== 窗口基本设置 ==========
     setWindowTitle("抖音弹幕朗读助手");
     resize(500, 600);
 
-    // TTS
+    // ========== TTS 引擎初始化 ==========
     tts = new QTextToSpeech(this);
     voices = tts->availableVoices();
 
-    // WebSocket
+    // ========== WebSocket 初始化 ==========
     webSocket = new QWebSocket();
 
-    // UI
+    // ========== 中央部件和主布局 ==========
     QWidget* central = new QWidget();
     setCentralWidget(central);
     QVBoxLayout* layout = new QVBoxLayout(central);
-    layout->setSpacing(10);
-    layout->setContentsMargins(14, 12, 14, 12);
+    layout->setSpacing(8);
+    layout->setContentsMargins(12, 10, 12, 10);
 
+    // ========== 标题 ==========
     QLabel* title = new QLabel("🎙️ 抖音弹幕朗读助手");
-    title->setStyleSheet("font-size: 22px; font-weight: bold; color: #5b8def;");
+    title->setStyleSheet("font-size: 20px; font-weight: bold; color: #5b8def;");
     title->setAlignment(Qt::AlignCenter);
     layout->addWidget(title);
 
-    // 连接
-    QGroupBox* connGroup = new QGroupBox("连接设置");
+    // ========== 连接设置 ==========
+    QGroupBox* connGroup = new QGroupBox("连接");
     QHBoxLayout* connLayout = new QHBoxLayout(connGroup);
     urlInput = new QLineEdit("ws://127.0.0.1:8888");
     urlInput->setPlaceholderText("弹幕网关地址");
@@ -38,36 +46,44 @@ MainWindow::MainWindow(QWidget* parent)
     connLayout->addWidget(disconnectBtn);
     layout->addWidget(connGroup);
 
-    // TTS
-    QGroupBox* ttsGroup = new QGroupBox("TTS 设置");
-    QVBoxLayout* ttsLayout = new QVBoxLayout(ttsGroup);
-    QHBoxLayout* voiceLayout = new QHBoxLayout();
-    voiceLayout->addWidget(new QLabel("音色："));
+    // ========== 功能开关 ==========
+    QGroupBox* switchGroup = new QGroupBox("朗读开关");
+    QHBoxLayout* switchLayout = new QHBoxLayout(switchGroup);
+    danmuSwitch = new QCheckBox("弹幕朗读");
+    giftSwitch = new QCheckBox("礼物朗读");
+    danmuSwitch->setChecked(true);   // 默认开启
+    giftSwitch->setChecked(true);    // 默认开启
+    switchLayout->addWidget(danmuSwitch);
+    switchLayout->addWidget(giftSwitch);
+    switchLayout->addStretch();
+    layout->addWidget(switchGroup);
+
+    // ========== TTS 设置 ==========
+    QGroupBox* ttsGroup = new QGroupBox("语音设置");
+    QGridLayout* ttsLayout = new QGridLayout(ttsGroup);
+    ttsLayout->addWidget(new QLabel("音色："), 0, 0);
     voiceCombo = new QComboBox();
     for (const auto& v : voices) voiceCombo->addItem(v.name());
-    voiceLayout->addWidget(voiceCombo);
-    ttsLayout->addLayout(voiceLayout);
-    QHBoxLayout* rateLayout = new QHBoxLayout();
-    rateLayout->addWidget(new QLabel("语速："));
+    ttsLayout->addWidget(voiceCombo, 0, 1);
+    ttsLayout->addWidget(new QLabel("语速："), 1, 0);
     rateSlider = new QSlider(Qt::Horizontal);
     rateSlider->setRange(0, 100);
     rateSlider->setValue(50);
     rateLabel = new QLabel("50");
-    rateLabel->setFixedWidth(40);
-    rateLayout->addWidget(rateSlider);
-    rateLayout->addWidget(rateLabel);
-    ttsLayout->addLayout(rateLayout);
+    rateLabel->setFixedWidth(30);
+    ttsLayout->addWidget(rateSlider, 1, 1);
+    ttsLayout->addWidget(rateLabel, 1, 2);
     layout->addWidget(ttsGroup);
 
-    // 弹幕列表
+    // ========== 弹幕列表 ==========
     QGroupBox* listGroup = new QGroupBox("弹幕");
     QVBoxLayout* listLayout = new QVBoxLayout(listGroup);
     danmuList = new QListWidget();
-    danmuList->setMaximumHeight(220);
+    danmuList->setMaximumHeight(200);
     listLayout->addWidget(danmuList);
     layout->addWidget(listGroup);
 
-    // 日志
+    // ========== 日志 ==========
     QGroupBox* logGroup = new QGroupBox("日志");
     QVBoxLayout* logLayout = new QVBoxLayout(logGroup);
     logView = new QTextEdit();
@@ -76,10 +92,10 @@ MainWindow::MainWindow(QWidget* parent)
     logLayout->addWidget(logView);
     layout->addWidget(logGroup);
 
-    // ---------- 底部版本信息 ----------
+    // ========== 底部版本信息 ==========
     QLabel* footer = new QLabel(
-        "本程序仅供个人自用，用于主播本人监听自己直播间弹幕，请遵守相关法律法规，违者责任自负\n\n"
-        "版本：v0.0.1-rc1\n"
+        "本程序仅供个人自用，用于主播本人监听自己直播间弹幕，请遵守相关法律法规，违者后果自负\n\n"
+        "版本：v0.0.1\n"
         "开发者：Byjsmc\n"
         "最后更新于：2026/09/04"
         );
@@ -87,7 +103,7 @@ MainWindow::MainWindow(QWidget* parent)
     footer->setWordWrap(true);
     layout->addWidget(footer);
 
-    // 信号
+    // ========== 信号连接 ==========
     connect(connectBtn, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
     connect(disconnectBtn, &QPushButton::clicked, this, &MainWindow::onDisconnectClicked);
     connect(webSocket, &QWebSocket::connected, this, &MainWindow::onWebSocketConnected);
@@ -96,10 +112,13 @@ MainWindow::MainWindow(QWidget* parent)
     connect(webSocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &MainWindow::onWebSocketError);
     connect(tts, &QTextToSpeech::stateChanged, this, &MainWindow::onStateChanged);
 
+    // 语速滑块
     connect(rateSlider, &QSlider::valueChanged, this, [this](int v) {
         rateLabel->setText(QString::number(v));
         tts->setRate(v / 100.0);
     });
+
+    // 音色选择
     connect(voiceCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (idx >= 0 && idx < voices.size()) tts->setVoice(voices[idx]);
     });
@@ -110,6 +129,8 @@ MainWindow::MainWindow(QWidget* parent)
 MainWindow::~MainWindow() {
     if (webSocket->state() == QAbstractSocket::ConnectedState) webSocket->close();
 }
+
+// ==================== 连接控制 ====================
 
 void MainWindow::onConnectClicked() {
     QString url = urlInput->text().trimmed();
@@ -142,6 +163,8 @@ void MainWindow::onWebSocketError(QAbstractSocket::SocketError error) {
     log(QString("连接错误: %1").arg(webSocket->errorString()));
 }
 
+// ==================== 消息处理 ====================
+
 void MainWindow::onTextMessageReceived(const QString& message) {
     parseDanmu(message);
 }
@@ -150,28 +173,65 @@ void MainWindow::onStateChanged(QTextToSpeech::State state) {
     Q_UNUSED(state);
 }
 
+/**
+ * @brief 解析弹幕网关推送的 JSON 消息
+ * Data 字段是嵌套的 JSON 字符串，需要二次解析
+ */
 void MainWindow::parseDanmu(const QString& json) {
     QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
     if (doc.isNull() || !doc.isObject()) return;
     QJsonObject root = doc.object();
-    int type = root.value("Type").toInt();
-    QJsonObject data = root.value("Data").toObject();
 
-    if (type == 1) {
-        QString nickname = data.value("User").toObject().value("Nickname").toString("?");
+    int type = root.value("Type").toInt();
+
+    // Data 是 JSON 字符串，需要再解析一层
+    QJsonObject data;
+    QJsonValue dataVal = root.value("Data");
+    if (dataVal.isString()) {
+        QJsonDocument dataDoc = QJsonDocument::fromJson(dataVal.toString().toUtf8());
+        if (dataDoc.isObject()) data = dataDoc.object();
+    } else if (dataVal.isObject()) {
+        data = dataVal.toObject();
+    }
+
+    // 提取用户昵称
+    auto getNick = [&](const QJsonObject& d) -> QString {
+        QJsonObject u = d.value("User").toObject();
+        QString nick = u.value("Nickname").toString();
+        if (nick.isEmpty()) nick = u.value("DisplayName").toString();
+        if (nick.isEmpty()) nick = u.value("DisplayId").toString();
+        return nick.isEmpty() ? "某人" : nick;
+    };
+
+    if (type == 1) {  // 弹幕
+        QString nickname = getNick(data);
         QString content = data.value("Content").toString().trimmed();
         if (content.isEmpty()) return;
+
         danmuList->addItem(QString("%1: %2").arg(nickname).arg(content));
         if (danmuList->count() > 80) danmuList->takeItem(0);
         danmuList->scrollToBottom();
-        speak(QString("%1说：%2").arg(nickname).arg(content));
-    } else if (type == 5) {
-        QString nickname = data.value("User").toObject().value("Nickname").toString("?");
-        QString gift = data.value("GiftName").toString("礼物");
-        int count = data.value("GiftCount").toInt(1);
+
+        // 弹幕朗读开关
+        if (danmuSwitch->isChecked()) {
+            speak(QString("%1说：%2").arg(nickname).arg(content));
+        }
+
+    } else if (type == 5) {  // 礼物
+        QString nickname = getNick(data);
+        QString gift = data.value("GiftName").toString();
+        if (gift.isEmpty()) gift = "礼物";
+        int count = data.value("GiftCount").toInt();
+        if (count == 0) count = data.value("RepeatCount").toInt();
+        if (count == 0) count = 1;
+
         QString text = QString("感谢%1送出的%2%3个").arg(nickname).arg(gift).arg(count);
         danmuList->addItem(QString("[礼物] %1").arg(text));
-        speak(text);
+
+        // 礼物朗读开关
+        if (giftSwitch->isChecked()) {
+            speak(text);
+        }
     }
 }
 
