@@ -12,12 +12,6 @@
 - 弹幕列表实时显示
 - 连接/断开控制与状态日志
 
-## 编译
-
-1. 安装 Qt 6.x（勾选 MinGW 64-bit，并在 Additional Libraries 中勾选 WebSockets 和 Speech）
-2. 打开 `DanmuReader.pro`
-3. 构建 → 运行
-
 ## 使用方法
 
 1. https://github.com/ape-byte/DouyinBarrageGrab/releases
@@ -30,6 +24,12 @@
 8. 使用完毕点击**断开**或关闭窗口
 
 > 无开播条件测试：浏览器进入任意正在直播的抖音直播间即可验证完整链路。
+
+## 编译
+
+1. 安装 Qt 6.x（勾选 MinGW 64-bit，并在 Additional Libraries 中勾选 WebSockets 和 Speech）
+2. 打开 `DanmuReader.pro`
+3. 构建 → 运行
 
 ## 免责声明
 
