@@ -46,6 +46,8 @@ private:
     QSlider* rateSlider;
     QLabel* rateLabel;
     QTextEdit* logView;
+    QCheckBox* danmuSwitch;
+    QCheckBox* giftSwitch;
 
     // 弹幕
     QWebSocket* webSocket;
