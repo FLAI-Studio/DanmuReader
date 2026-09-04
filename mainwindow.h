@@ -12,16 +12,19 @@
 #include <QSlider>
 #include <QTextEdit>
 #include <QGroupBox>
+#include <QCheckBox>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QDateTime>
 #include <QProcess>
-
-
+#include <QQueue>
+#include <QTimer>
+#include <QSettings>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -38,6 +41,13 @@ private slots:
     void onWebSocketDisconnected();
     void onWebSocketError(QAbstractSocket::SocketError error);
     void onStateChanged(QTextToSpeech::State state);
+    void onTtsTimerTimeout();
+    void onReconnectTimerTimeout();
+    void onGatewayWatchdogTimeout();
+    void onAlwaysOnTopToggled(bool checked);
+    void onOpacityChanged(int value);
+    void saveConfig();
+    void loadConfig();
 
 private:
     // UI
@@ -51,6 +61,14 @@ private:
     QTextEdit* logView;
     QCheckBox* danmuSwitch;
     QCheckBox* giftSwitch;
+    QCheckBox* enterSwitch;
+    QSlider* volumeSlider;
+    QLabel* volumeLabel;
+    QCheckBox* alwaysOnTopCheck;
+    QSlider* opacitySlider;
+    QLabel* opacityLabel;
+    QLineEdit* danmuTemplateInput;
+    QLineEdit* giftTemplateInput;
 
     // 弹幕
     QWebSocket* webSocket;
@@ -60,11 +78,22 @@ private:
     QTextToSpeech* tts;
     QVector<QVoice> voices;
 
+    QProcess* gatewayProcess;
+    QQueue<QString> ttsQueue;
+    QTimer* ttsTimer;
+    QTimer* reconnectTimer;
+    QTimer* gatewayWatchdogTimer;
+    int reconnectAttempts;
+    bool waitingForGateway;
+    bool manualDisconnect;
+    QString danmuTpl;
+    QString giftTpl;
+
     void log(const QString& msg);
     void speak(const QString& text);
+    void enqueueSpeak(const QString& text);
     void parseDanmu(const QString& json);
 
-    QProcess* gatewayProcess;
     bool ensureGatewayRunning();
     void startGateway();
     void stopGateway();
