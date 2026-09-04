@@ -312,7 +312,7 @@ MainWindow::MainWindow(QWidget* parent)
     // ========== 底部版本信息 ==========
     QLabel* footer = new QLabel(
         "本程序仅供个人自用，用于主播本人监听自己直播间弹幕，请遵守相关法律法规，违者后果自负\n\n"
-        "版本：v0.1.2\n"
+        "版本：v0.2.0\n"
         "开发者：Byjsmc\n"
         "最后更新于：2026/09/05"
         );
