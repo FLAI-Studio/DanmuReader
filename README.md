@@ -62,6 +62,6 @@
 
 本程序集成 [DouyinBarrageGrab](https://github.com/ape-byte/DouyinBarrageGrab)（v2.8.0），基于 MIT License 开源
 
-版权归 `一只小白猿` 所有。
+版权归 [小白不圆](https://github.com/ape-byte) 所有。
 
 ---
