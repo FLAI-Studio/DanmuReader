@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QThread>
 #include <QDir>
+#include <QProcess>
 
 
 /**
@@ -49,7 +50,7 @@ void MainWindow::startGateway() {
         return;
     }
 
-    // 优先找包含 "Wss" 或 "Barrage" 或 "Grab" 的
+    // 优先找包
     QString gatewayExe;
     for (const QString& exe : exes) {
         if (exe.contains("Wss", Qt::CaseInsensitive) ||
@@ -176,7 +177,7 @@ MainWindow::MainWindow(QWidget* parent)
     // ========== 底部版本信息 ==========
     QLabel* footer = new QLabel(
         "本程序仅供个人自用，用于主播本人监听自己直播间弹幕，请遵守相关法律法规，违者后果自负\n\n"
-        "版本：v0.1.0\n"
+        "版本：v0.1.1\n"
         "开发者：Byjsmc\n"
         "最后更新于：2026/09/04"
         );
@@ -249,18 +250,23 @@ void MainWindow::onWebSocketConnected() {
     connectBtn->setEnabled(false);
     disconnectBtn->setEnabled(true);
     log("✅ 已连接到弹幕服务");
+    speak("已连接到弹幕服务");
 }
+
 
 void MainWindow::onWebSocketDisconnected() {
     connected = false;
     connectBtn->setEnabled(true);
     disconnectBtn->setEnabled(false);
     log("❌ 连接已断开");
+    speak("连接已断开");
 }
 
 void MainWindow::onWebSocketError(QAbstractSocket::SocketError error) {
     Q_UNUSED(error);
-    log(QString("连接错误: %1").arg(webSocket->errorString()));
+    QString errMsg = QString("连接错误: %1 ，请检查网关是否正常运行以及程序是否为管理员身份运行").arg(webSocket->errorString());
+    log(errMsg);
+    speak("连接错误，请检查网关是否正常运行以及程序是否为管理员身份运行");
 }
 
 // ==================== 消息处理 ====================
@@ -336,7 +342,6 @@ void MainWindow::parseDanmu(const QString& json) {
 }
 
 void MainWindow::speak(const QString& text) {
-    if (!connected) return;
     tts->say(text);
 }
 
