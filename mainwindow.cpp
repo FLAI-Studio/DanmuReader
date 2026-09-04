@@ -1,6 +1,87 @@
 #include "mainwindow.h"
 
 #include <QCheckBox>
+#include <QEventLoop>
+#include <QTimer>
+#include <QFile>
+#include <QApplication>
+#include <QThread>
+#include <QDir>
+
+
+/**
+ * @brief 检查网关是否已经在运行（通过尝试连接 ws 端口）
+ * @return true 表示网关已就绪
+ */
+bool MainWindow::ensureGatewayRunning() {
+
+    QWebSocket probe;
+    QEventLoop loop;
+    bool ok = false;
+
+    QObject::connect(&probe, &QWebSocket::connected, [&]() {
+        ok = true;
+        probe.close();
+    });
+    QObject::connect(&probe, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
+                     [&loop]() { loop.quit(); });
+
+    probe.open(QUrl(urlInput->text().trimmed()));
+    QTimer::singleShot(1500, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    return ok;
+}
+
+/**
+ * @brief 启动网关子进程（后台常驻）
+ */
+void MainWindow::startGateway() {
+    QString gatewayDir = QCoreApplication::applicationDirPath() + "/gateway";
+
+    // 列出 gateway 目录下所有 exe，自动找
+    QDir dir(gatewayDir);
+    QStringList exes = dir.entryList(QStringList() << "*.exe", QDir::Files);
+
+    if (exes.isEmpty()) {
+        log("⚠️ gateway 文件夹下没有找到任何 exe 文件");
+        log("请确认已将网关程序解压到: " + gatewayDir);
+        return;
+    }
+
+    // 优先找包含 "Wss" 或 "Barrage" 或 "Grab" 的
+    QString gatewayExe;
+    for (const QString& exe : exes) {
+        if (exe.contains("Wss", Qt::CaseInsensitive) ||
+            exe.contains("Barrage", Qt::CaseInsensitive) ||
+            exe.contains("Grab", Qt::CaseInsensitive)) {
+            gatewayExe = gatewayDir + "/" + exe;
+            break;
+        }
+    }
+    // 如果没匹配到，就用第一个 exe
+    if (gatewayExe.isEmpty()) gatewayExe = gatewayDir + "/" + exes.first();
+
+    log("找到网关: " + gatewayExe);
+
+    gatewayProcess = new QProcess(this);
+    gatewayProcess->setWorkingDirectory(gatewayDir);
+    gatewayProcess->start(gatewayExe, QStringList());
+    log("正在启动弹幕网关...");
+}
+
+/**
+ * @brief 停止网关子进程
+ */
+void MainWindow::stopGateway() {
+    if (gatewayProcess && gatewayProcess->state() == QProcess::Running) {
+        gatewayProcess->kill();
+        gatewayProcess->waitForFinished(3000);
+        gatewayProcess->deleteLater();
+        gatewayProcess = nullptr;
+        log("弹幕网关已停止");
+    }
+}
 
 /**
  * @brief 主窗口构造函数
@@ -95,7 +176,7 @@ MainWindow::MainWindow(QWidget* parent)
     // ========== 底部版本信息 ==========
     QLabel* footer = new QLabel(
         "本程序仅供个人自用，用于主播本人监听自己直播间弹幕，请遵守相关法律法规，违者后果自负\n\n"
-        "版本：v0.0.1\n"
+        "版本：v0.1.0\n"
         "开发者：Byjsmc\n"
         "最后更新于：2026/09/04"
         );
@@ -128,6 +209,7 @@ MainWindow::MainWindow(QWidget* parent)
 
 MainWindow::~MainWindow() {
     if (webSocket->state() == QAbstractSocket::ConnectedState) webSocket->close();
+    stopGateway();
 }
 
 // ==================== 连接控制 ====================
@@ -135,9 +217,27 @@ MainWindow::~MainWindow() {
 void MainWindow::onConnectClicked() {
     QString url = urlInput->text().trimmed();
     if (url.isEmpty()) { QMessageBox::warning(this, "错误", "请输入弹幕网关地址"); return; }
+
+    if (!ensureGatewayRunning()) {
+        log("网关未运行，正在尝试启动...");
+        startGateway();
+
+        QString gatewayDir = QCoreApplication::applicationDirPath() + "/gateway";
+        QDir dir(gatewayDir);
+        if (dir.entryList(QStringList() << "*.exe", QDir::Files).isEmpty()) {
+            log("❌ gateway 文件夹下未找到任何 exe，请确认已部署网关");
+            return;
+        }
+
+        log("等待网关初始化（约 3 秒）...");
+        QApplication::processEvents();
+        QThread::sleep(3);
+    }
+
     log(QString("正在连接 %1...").arg(url));
     webSocket->open(QUrl(url));
 }
+
 
 void MainWindow::onDisconnectClicked() {
     webSocket->close();
