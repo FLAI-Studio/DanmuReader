@@ -19,6 +19,9 @@
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QDateTime>
+#include <QProcess>
+
+
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -60,6 +63,11 @@ private:
     void log(const QString& msg);
     void speak(const QString& text);
     void parseDanmu(const QString& json);
+
+    QProcess* gatewayProcess;
+    bool ensureGatewayRunning();
+    void startGateway();
+    void stopGateway();
 };
 
 #endif // MAINWINDOW_H
