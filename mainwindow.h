@@ -1,52 +1,73 @@
-#include "mainwindow.h"
-#include <QApplication>
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QWebSocket>
+#include <QTextToSpeech>
+#include <QListWidget>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QLabel>
+#include <QComboBox>
+#include <QSlider>
+#include <QTextEdit>
+#include <QGroupBox>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QScrollBar>
+#include <QMessageBox>
+#include <QDateTime>
 #include <QProcess>
-#include <QDir>
-#include <QFileInfo>
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-#include <shellapi.h>
 
-bool isRunAsAdmin() {
-    BOOL isAdmin = FALSE;
-    PSID adminGroup = nullptr;
-    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
-    if (AllocateAndInitializeSid(&ntAuthority, 2,
-                                 SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS,
-                                 0, 0, 0, 0, 0, 0, &adminGroup)) {
-        CheckTokenMembership(nullptr, adminGroup, &isAdmin);
-        FreeSid(adminGroup);
-    }
-    return isAdmin;
-}
 
-// Windows API 拿路径
-QString getExePath() {
-    wchar_t path[MAX_PATH];
-    GetModuleFileNameW(nullptr, path, MAX_PATH);
-    return QString::fromWCharArray(path);
-}
-#endif
+class MainWindow : public QMainWindow {
+    Q_OBJECT
 
-int main(int argc, char* argv[]) {
-#ifdef Q_OS_WIN
-    if (!isRunAsAdmin()) {
-        QString program = getExePath();
-        QString workDir = QFileInfo(program).absolutePath();
+public:
+    explicit MainWindow(QWidget* parent = nullptr);
+    ~MainWindow();
 
-        QProcess::execute("powershell", QStringList()
-                                            << "-WindowStyle" << "Hidden"
-                                            << "-Command"
-                                            << QString("Start-Process -FilePath \"%1\" -Verb RunAs -WorkingDirectory \"%2\"")
-                                                   .arg(program, QDir::toNativeSeparators(workDir)));
+private slots:
+    void onConnectClicked();
+    void onDisconnectClicked();
+    void onTextMessageReceived(const QString& message);
+    void onWebSocketConnected();
+    void onWebSocketDisconnected();
+    void onWebSocketError(QAbstractSocket::SocketError error);
+    void onStateChanged(QTextToSpeech::State state);
 
-        return 0;
-    }
-#endif
+private:
+    // UI
+    QLineEdit* urlInput;
+    QPushButton* connectBtn;
+    QPushButton* disconnectBtn;
+    QListWidget* danmuList;
+    QComboBox* voiceCombo;
+    QSlider* rateSlider;
+    QLabel* rateLabel;
+    QTextEdit* logView;
+    QCheckBox* danmuSwitch;
+    QCheckBox* giftSwitch;
 
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    return a.exec();
-}
+    // 弹幕
+    QWebSocket* webSocket;
+    bool connected;
+
+    // TTS
+    QTextToSpeech* tts;
+    QVector<QVoice> voices;
+
+    void log(const QString& msg);
+    void speak(const QString& text);
+    void parseDanmu(const QString& json);
+
+    QProcess* gatewayProcess;
+    bool ensureGatewayRunning();
+    void startGateway();
+    void stopGateway();
+};
+
+#endif // MAINWINDOW_H
